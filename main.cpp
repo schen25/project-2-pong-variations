@@ -23,18 +23,39 @@ constexpr int SCREEN_WIDTH  = 1600 / 2,
               SCREEN_HEIGHT = 900 / 2,
               FPS           = 60,
               SIZE          = 500 / 2,
-              SPEED         = 200;
+              SPEED         = 200,
+              SPRITE_SIZE   = 500;
 
 constexpr char    BG_COLOUR[]    = "#F8F1C8";
 constexpr Vector2 ORIGIN    = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2},
                   BASE_SIZE = {static_cast<float>(SIZE), static_cast<float>(SIZE)};
 
+constexpr char SPRITES_FP[] = "assets/sprites.png"; // drawn by me :]
+
+// Global Variables
 AppStatus   gAppStatus      = RUNNING;
 float       gAngle          = 0.0f, 
             gPreviousTicks  = 0.0f;
 
-Vector2     gMousePosition = GetMousePosition();
+Vector2     gBall1Position = ORIGIN,
+            gBall1Movement = {0.0f, 0.0f},
+            gBall2Position = {ORIGIN.x + 200.0f, ORIGIN.y},//ORIGIN,
+            gBall2Movement = {0.0f, 0.0f},
+            gBall3Position = {ORIGIN.x- 200.0f, ORIGIN.y}, //ORIGIN,
+            gBall3Movement = {0.0f, 0.0f},
+            gBallSize = BASE_SIZE,
+            gMousePosition = GetMousePosition();
 
+std::vector<std::vector<float>> gTextureCoords;
+std::vector<Vector2*> gBallPositions = {
+    &gBall1Position,
+    &gBall2Position,
+    &gBall3Position
+};
+
+Texture2D gSpritesTexture;
+
+int numBalls = 3;
 unsigned int gStartTime;
 
 // Function Declarations
@@ -66,17 +87,17 @@ bool isColliding(const Vector2 *positionA, const Vector2 *scaleA,
     return xDistance < 0.0f && yDistance < 0.0f;
 }
 
-void renderObject(const Texture2D *texture, const Vector2 *position,
+void renderObject(const Texture2D *texture, 
+                  const std::vector<float>& textureCoords, const Vector2 *position,
                   const Vector2 *scale)
 {
     // Whole texture (UV coordinates)
     Rectangle textureArea = {
         // top-left corner
-        0.0f, 0.0f,
+        textureCoords[0], textureCoords[1],
 
         // bottom-right corner (of texture)
-        static_cast<float>(texture->width),
-        static_cast<float>(texture->height)
+        textureCoords[2], textureCoords[3]
     };
 
     // Destination rectangle – centred on gPosition
@@ -105,6 +126,13 @@ void initialise() {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Pong Variations");
 
     gStartTime = time(nullptr);
+    gSpritesTexture = LoadTexture(SPRITES_FP);
+
+    for (int i = 0; i < 3; i++){
+        gTextureCoords.push_back(std::vector<float>{0.0f, 1.0f*SPRITE_SIZE*i,
+                                 1.0f*SPRITE_SIZE,
+                                 1.0f*SPRITE_SIZE});
+    }
 
     SetTargetFPS(FPS);
 }
@@ -125,13 +153,17 @@ void update(){
 
 void render(){
     BeginDrawing();
-    
     ClearBackground(ColorFromHex(BG_COLOUR));
+    for (int i = 0; i < numBalls; i++){
+        renderObject(&gSpritesTexture, gTextureCoords[i], gBallPositions[i], &gBallSize);
+    }
 
     EndDrawing();
 }
 
 void shutdown(){
+
+    UnloadTexture(gSpritesTexture);
 
     CloseWindow();
 }

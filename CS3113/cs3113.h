@@ -7,6 +7,7 @@
 #include <math.h>
 #include <time.h>
 #include <iostream>
+#include <vector>
 
 enum AppStatus { TERMINATED, RUNNING };
 
