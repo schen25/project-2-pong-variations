@@ -23,12 +23,13 @@ constexpr int SCREEN_WIDTH  = 1600 / 2,
               SCREEN_HEIGHT = 900 / 2,
               FPS           = 60,
               SIZE          = 100 / 2,
-              SPEED         = 200,
+              SPEED         = 250,
               SPRITE_SIZE   = 500,
               PADDLE_LENGTH = 300 / 2,
               PADDLE_WIDTH = 50 / 2,
               PADDLE_DISTANCE = SCREEN_WIDTH / 2 - 30,
-              PADDLE_SPEED = 150;
+              PADDLE_SPEED = 175,
+              BORDER_THICKNESS = 20;
 
 constexpr char    BG_COLOUR[]    = "#F8F1C8";
 constexpr Vector2 ORIGIN    = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2},
@@ -45,9 +46,9 @@ float       gAngle          = 0.0f,
 
 Vector2     gBall1Position = ORIGIN,
             gBall1Movement = {0.0f, 0.0f},
-            gBall2Position = {ORIGIN.x + 200.0f, ORIGIN.y},//ORIGIN,
+            gBall2Position = ORIGIN,
             gBall2Movement = {0.0f, 0.0f},
-            gBall3Position = {ORIGIN.x- 200.0f, ORIGIN.y}, //ORIGIN,
+            gBall3Position = ORIGIN,
             gBall3Movement = {0.0f, 0.0f},
             gBallSize = BASE_SIZE,
             gPaddle1Position = {ORIGIN.x - PADDLE_DISTANCE, ORIGIN.y},
@@ -68,12 +69,19 @@ std::vector<Vector2*> gBallPositions = {
     &gBall2Position,
     &gBall3Position
 };
+std::vector<Vector2*> gBallMovements = {
+    &gBall1Movement,
+    &gBall2Movement,
+    &gBall3Movement
+};
 
 Texture2D gSpritesTexture;
 Texture2D gPaddleTexture;
 Texture2D gBkgdTexture;
 
-int numBalls = 3;
+int numBalls = 1;
+int player1Score = 0;
+int player2Score = 0;
 unsigned int gStartTime;
 
 // Function Declarations
@@ -104,6 +112,22 @@ bool isColliding(const Vector2 *positionA, const Vector2 *scaleA,
 
     return xDistance < 0.0f && yDistance < 0.0f;
 }
+
+
+// moves ball to the origin and gives it a random movement vector
+void resetBall(int i){
+    gBallPositions[i] -> x = ORIGIN.x;
+    gBallPositions[i] -> y = ORIGIN.y;
+
+    gBallMovements[i] -> x = std::rand();
+    gBallMovements[i] -> y = std::rand();
+
+    if (std::rand() % 2) gBallMovements[i] -> x *= -1;
+    if (std::rand() %2) gBallMovements[i] -> y *= -1;
+
+    Normalise(gBallMovements[i]);
+}
+
 
 void renderObject(const Texture2D *texture, 
                   const std::vector<float>& textureCoords, const Vector2 *position,
@@ -144,6 +168,7 @@ void initialise() {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Pong Variations");
 
     gStartTime = time(nullptr);
+    std::srand(gStartTime);
     gSpritesTexture = LoadTexture(SPRITES_FP);
     gPaddleTexture = LoadTexture(PADDLE_FP);
     gBkgdTexture = LoadTexture(BKGD_FP);
@@ -152,6 +177,13 @@ void initialise() {
         gTextureCoords.push_back(std::vector<float>{0.0f, 1.0f*SPRITE_SIZE*i,
                                  1.0f*SPRITE_SIZE,
                                  1.0f*SPRITE_SIZE});
+        gBallMovements[i] -> x = std::rand();
+        gBallMovements[i] -> y = std::rand();
+
+        if (std::rand() % 2) gBallMovements[i] -> x *= -1;
+        if (std::rand() % 2) gBallMovements[i] -> y *= -1;
+
+        Normalise(gBallMovements[i]);
     }
 
     SetTargetFPS(FPS);
@@ -168,6 +200,22 @@ void processInput(){
     if (IsKeyDown(KEY_UP)) gPaddle2Movement.y--;
     else if (IsKeyDown(KEY_DOWN)) gPaddle2Movement.y++;
 
+    if (IsKeyPressed(KEY_ONE)){
+        numBalls = 1;
+        // reset balls 2, 3 (1 and 2 are the indices)
+        resetBall(1);
+        resetBall(2);
+
+    }
+    else if (IsKeyPressed(KEY_TWO)){
+        numBalls = 2;
+        resetBall(2);
+    }
+    else if (IsKeyPressed(KEY_THREE)){
+        numBalls = 3;
+    }
+    
+
     if (WindowShouldClose()) gAppStatus = TERMINATED;
 }
 
@@ -177,9 +225,35 @@ void update(){
     float deltaTime = ticks - gPreviousTicks;
     gPreviousTicks = ticks;
 
-    gPaddle1Position.y = gPaddle1Position.y + PADDLE_SPEED * gPaddle1Movement.y * deltaTime;
-    gPaddle2Position.y = gPaddle2Position.y + PADDLE_SPEED * gPaddle2Movement.y * deltaTime;
+    // update paddles
+    float paddle1NewY = gPaddle1Position.y + PADDLE_SPEED * gPaddle1Movement.y * deltaTime;
+    float paddle2NewY = gPaddle2Position.y + PADDLE_SPEED * gPaddle2Movement.y * deltaTime;
+    if (paddle1NewY - PADDLE_LENGTH/2 > BORDER_THICKNESS &&
+        paddle1NewY + PADDLE_LENGTH/2 < SCREEN_HEIGHT-BORDER_THICKNESS){
+        gPaddle1Position.y = paddle1NewY;
+    }
+    if (paddle2NewY - PADDLE_LENGTH/2 > BORDER_THICKNESS &&
+        paddle2NewY + PADDLE_LENGTH/2 < SCREEN_HEIGHT-BORDER_THICKNESS){
+        gPaddle2Position.y = paddle2NewY;
+    }
 
+    // update balls
+    for (int i = 0; i < numBalls; i++){ 
+        gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime;
+        gBallPositions[i] -> y += gBallMovements[i] -> y * SPEED * deltaTime;
+
+        if (isColliding(gBallPositions[i], &gBallSize, &gPaddle1Position, &gPaddleSize) ||
+            isColliding(gBallPositions[i], &gBallSize, &gPaddle2Position, &gPaddleSize)){
+            gBallMovements[i] -> x *= -1;
+            gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime*5; // prevent trapping
+        }
+        if (gBallPositions[i] -> y - SIZE/2 <= BORDER_THICKNESS || 
+            gBallPositions[i] -> y + SIZE/2 >= SCREEN_HEIGHT-BORDER_THICKNESS){
+                gBallMovements[i] -> y *= -1;
+                gBallPositions[i] -> y += gBallMovements[i] -> y * SPEED * deltaTime *5;
+         }
+    }
+    
     gMousePosition = GetMousePosition();
 }
 
