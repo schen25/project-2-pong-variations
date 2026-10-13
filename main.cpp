@@ -79,9 +79,10 @@ Texture2D gSpritesTexture;
 Texture2D gPaddleTexture;
 Texture2D gBkgdTexture;
 
-int numBalls = 1;
-int player1Score = 0;
-int player2Score = 0;
+int gNumBalls = 1;
+int gPlayer1Score = 0;
+int gPlayer2Score = 0;
+bool gIsTwoPlayer = true;
 unsigned int gStartTime;
 
 // Function Declarations
@@ -114,7 +115,7 @@ bool isColliding(const Vector2 *positionA, const Vector2 *scaleA,
 }
 
 
-// moves ball to the origin and gives it a random movement vector
+// takes int i, moves ball[i] to the origin and gives it a random movement vector
 void resetBall(int i){
     gBallPositions[i] -> x = ORIGIN.x;
     gBallPositions[i] -> y = ORIGIN.y;
@@ -128,6 +129,13 @@ void resetBall(int i){
     Normalise(gBallMovements[i]);
 }
 
+// takes two position vectors, returns distance between the 2 points
+float getDistance(const Vector2 *positionA, const Vector2 *positionB){
+    return sqrtf(
+        pow((positionA -> x - positionB -> x), 2) +
+        pow((positionA -> y - positionB -> y), 2) 
+    );
+}
 
 void renderObject(const Texture2D *texture, 
                   const std::vector<float>& textureCoords, const Vector2 *position,
@@ -194,25 +202,49 @@ void processInput(){
     gPaddle1Movement = {0.0f, 0.0f};
     gPaddle2Movement = {0.0f, 0.0f};
 
+    if (IsKeyPressed(KEY_T)) gIsTwoPlayer = !gIsTwoPlayer;
+
     if (IsKeyDown(KEY_W)) gPaddle1Movement.y--;
     else if (IsKeyDown(KEY_S)) gPaddle1Movement.y++;
 
-    if (IsKeyDown(KEY_UP)) gPaddle2Movement.y--;
-    else if (IsKeyDown(KEY_DOWN)) gPaddle2Movement.y++;
+    if (gIsTwoPlayer){
+        if (IsKeyDown(KEY_UP)) gPaddle2Movement.y--;
+        else if (IsKeyDown(KEY_DOWN)) gPaddle2Movement.y++;
+    }
+    else {
+        // automated motion
+        float minXDistance = SCREEN_WIDTH;
+        Vector2* closestBall = nullptr;
+        for (int i = 0; i < gNumBalls; i++){
+            if (gBallPositions[i] -> x < gPaddle2Position.x &&
+                gBallMovements[i] -> x > 0){
+                // ball is a candidate to follow if it is moving toward you
+                if (gPaddle2Position.x - gBallPositions[i] -> x < minXDistance){
+                    minXDistance = gPaddle2Position.x - gBallPositions[i] -> x;
+                    closestBall = gBallPositions[i];
+                }
+            }
+        }
+        if (closestBall){
+            if (gPaddle2Position.y > closestBall -> y) gPaddle2Movement.y--;
+            if (gPaddle2Position.y < closestBall -> y) gPaddle2Movement.y++;
+        }
 
+    }
+    
     if (IsKeyPressed(KEY_ONE)){
-        numBalls = 1;
+        gNumBalls = 1;
         // reset balls 2, 3 (1 and 2 are the indices)
         resetBall(1);
         resetBall(2);
 
     }
     else if (IsKeyPressed(KEY_TWO)){
-        numBalls = 2;
+        gNumBalls = 2;
         resetBall(2);
     }
     else if (IsKeyPressed(KEY_THREE)){
-        numBalls = 3;
+        gNumBalls = 3;
     }
     
 
@@ -238,22 +270,32 @@ void update(){
     }
 
     // update balls
-    for (int i = 0; i < numBalls; i++){ 
+    for (int i = 0; i < gNumBalls; i++){ 
         gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime;
         gBallPositions[i] -> y += gBallMovements[i] -> y * SPEED * deltaTime;
 
         if (isColliding(gBallPositions[i], &gBallSize, &gPaddle1Position, &gPaddleSize) ||
             isColliding(gBallPositions[i], &gBallSize, &gPaddle2Position, &gPaddleSize)){
             gBallMovements[i] -> x *= -1;
-            gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime*5; // prevent trapping
+            gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime*1.05; // prevent trapping
         }
         if (gBallPositions[i] -> y - SIZE/2 <= BORDER_THICKNESS || 
             gBallPositions[i] -> y + SIZE/2 >= SCREEN_HEIGHT-BORDER_THICKNESS){
                 gBallMovements[i] -> y *= -1;
-                gBallPositions[i] -> y += gBallMovements[i] -> y * SPEED * deltaTime *5;
+                gBallPositions[i] -> y += gBallMovements[i] -> y * SPEED * deltaTime *1.05;
+         }
+
+         if (gBallPositions[i] -> x < -1*SIZE){ 
+            gPlayer2Score++;
+            resetBall(i);
+         }
+         if (gBallPositions[i] -> x > SCREEN_WIDTH + SIZE){
+            gPlayer1Score++;
+            resetBall(i);
          }
     }
     
+
     gMousePosition = GetMousePosition();
 }
 
@@ -263,7 +305,7 @@ void render(){
     // render background
     renderObject(&gBkgdTexture, gBkgdCoords, &gBkgdPosition, &gBkgdSize);
 
-    for (int i = 0; i < numBalls; i++){ // render balls
+    for (int i = 0; i < gNumBalls; i++){ // render balls
         renderObject(&gSpritesTexture, gTextureCoords[i], gBallPositions[i], &gBallSize);
     }
 
