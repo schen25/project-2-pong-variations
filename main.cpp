@@ -22,15 +22,21 @@
 constexpr int SCREEN_WIDTH  = 1600 / 2,
               SCREEN_HEIGHT = 900 / 2,
               FPS           = 60,
-              SIZE          = 500 / 2,
+              SIZE          = 100 / 2,
               SPEED         = 200,
-              SPRITE_SIZE   = 500;
+              SPRITE_SIZE   = 500,
+              PADDLE_LENGTH = 300 / 2,
+              PADDLE_WIDTH = 50 / 2,
+              PADDLE_DISTANCE = SCREEN_WIDTH / 2 - 30,
+              PADDLE_SPEED = 150;
 
 constexpr char    BG_COLOUR[]    = "#F8F1C8";
 constexpr Vector2 ORIGIN    = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2},
                   BASE_SIZE = {static_cast<float>(SIZE), static_cast<float>(SIZE)};
 
 constexpr char SPRITES_FP[] = "assets/sprites.png"; // drawn by me :]
+constexpr char PADDLE_FP[] = "assets/paddle.png";
+constexpr char BKGD_FP[] = "assets/bkgd.png";
 
 // Global Variables
 AppStatus   gAppStatus      = RUNNING;
@@ -44,9 +50,19 @@ Vector2     gBall1Position = ORIGIN,
             gBall3Position = {ORIGIN.x- 200.0f, ORIGIN.y}, //ORIGIN,
             gBall3Movement = {0.0f, 0.0f},
             gBallSize = BASE_SIZE,
+            gPaddle1Position = {ORIGIN.x - PADDLE_DISTANCE, ORIGIN.y},
+            gPaddle1Movement = {0.0f, 0.0f},
+            gPaddle2Position = {ORIGIN.x + PADDLE_DISTANCE, ORIGIN.y},
+            gPaddle2Movement = {0.0f, 0.0f},
+            gPaddleSize = {PADDLE_WIDTH, PADDLE_LENGTH},
+            gBkgdPosition = ORIGIN,
+            gBkgdSize = {SCREEN_WIDTH, SCREEN_HEIGHT},
             gMousePosition = GetMousePosition();
 
+
 std::vector<std::vector<float>> gTextureCoords;
+std::vector<float> gPaddleCoords = {0.0f, 0.0f, 50, 300};
+std::vector<float> gBkgdCoords = {0.0f, 0.0f, 1600, 900};
 std::vector<Vector2*> gBallPositions = {
     &gBall1Position,
     &gBall2Position,
@@ -54,6 +70,8 @@ std::vector<Vector2*> gBallPositions = {
 };
 
 Texture2D gSpritesTexture;
+Texture2D gPaddleTexture;
+Texture2D gBkgdTexture;
 
 int numBalls = 3;
 unsigned int gStartTime;
@@ -89,7 +107,7 @@ bool isColliding(const Vector2 *positionA, const Vector2 *scaleA,
 
 void renderObject(const Texture2D *texture, 
                   const std::vector<float>& textureCoords, const Vector2 *position,
-                  const Vector2 *scale)
+                  const Vector2 *scale) // note textureCoords is not passed by ptr
 {
     // Whole texture (UV coordinates)
     Rectangle textureArea = {
@@ -127,6 +145,8 @@ void initialise() {
 
     gStartTime = time(nullptr);
     gSpritesTexture = LoadTexture(SPRITES_FP);
+    gPaddleTexture = LoadTexture(PADDLE_FP);
+    gBkgdTexture = LoadTexture(BKGD_FP);
 
     for (int i = 0; i < 3; i++){
         gTextureCoords.push_back(std::vector<float>{0.0f, 1.0f*SPRITE_SIZE*i,
@@ -139,6 +159,15 @@ void initialise() {
 
 
 void processInput(){
+    gPaddle1Movement = {0.0f, 0.0f};
+    gPaddle2Movement = {0.0f, 0.0f};
+
+    if (IsKeyDown(KEY_W)) gPaddle1Movement.y--;
+    else if (IsKeyDown(KEY_S)) gPaddle1Movement.y++;
+
+    if (IsKeyDown(KEY_UP)) gPaddle2Movement.y--;
+    else if (IsKeyDown(KEY_DOWN)) gPaddle2Movement.y++;
+
     if (WindowShouldClose()) gAppStatus = TERMINATED;
 }
 
@@ -148,15 +177,26 @@ void update(){
     float deltaTime = ticks - gPreviousTicks;
     gPreviousTicks = ticks;
 
+    gPaddle1Position.y = gPaddle1Position.y + PADDLE_SPEED * gPaddle1Movement.y * deltaTime;
+    gPaddle2Position.y = gPaddle2Position.y + PADDLE_SPEED * gPaddle2Movement.y * deltaTime;
+
     gMousePosition = GetMousePosition();
 }
 
 void render(){
     BeginDrawing();
     ClearBackground(ColorFromHex(BG_COLOUR));
-    for (int i = 0; i < numBalls; i++){
+    // render background
+    renderObject(&gBkgdTexture, gBkgdCoords, &gBkgdPosition, &gBkgdSize);
+
+    for (int i = 0; i < numBalls; i++){ // render balls
         renderObject(&gSpritesTexture, gTextureCoords[i], gBallPositions[i], &gBallSize);
     }
+
+    // render paddles
+    renderObject(&gPaddleTexture, gPaddleCoords, &gPaddle1Position, &gPaddleSize);
+    renderObject(&gPaddleTexture, gPaddleCoords, &gPaddle2Position, &gPaddleSize);
+
 
     EndDrawing();
 }
@@ -164,6 +204,8 @@ void render(){
 void shutdown(){
 
     UnloadTexture(gSpritesTexture);
+    UnloadTexture(gPaddleTexture);
+    UnloadTexture(gBkgdTexture);
 
     CloseWindow();
 }
