@@ -38,6 +38,9 @@ constexpr Vector2 ORIGIN    = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2},
 constexpr char SPRITES_FP[] = "assets/sprites.png"; // drawn by me :]
 constexpr char PADDLE_FP[] = "assets/paddle.png";
 constexpr char BKGD_FP[] = "assets/bkgd.png";
+constexpr char WIN_BKGD_FP[] = "assets/winBkgd.png";
+constexpr char ONE_FP[] = "assets/1.png";
+constexpr char TWO_FP[] = "assets/2.png";
 
 // Global Variables
 AppStatus   gAppStatus      = RUNNING;
@@ -78,10 +81,14 @@ std::vector<Vector2*> gBallMovements = {
 Texture2D gSpritesTexture;
 Texture2D gPaddleTexture;
 Texture2D gBkgdTexture;
+Texture2D gWinBkgdTexture;
+Texture2D gOneTexture;
+Texture2D gTwoTexture;
 
 int gNumBalls = 1;
 int gPlayer1Score = 0;
 int gPlayer2Score = 0;
+int gScreen = 1;
 bool gIsTwoPlayer = true;
 unsigned int gStartTime;
 
@@ -180,6 +187,9 @@ void initialise() {
     gSpritesTexture = LoadTexture(SPRITES_FP);
     gPaddleTexture = LoadTexture(PADDLE_FP);
     gBkgdTexture = LoadTexture(BKGD_FP);
+    gWinBkgdTexture = LoadTexture(WIN_BKGD_FP);
+    gOneTexture = LoadTexture(ONE_FP);
+    gTwoTexture = LoadTexture(TWO_FP);
 
     for (int i = 0; i < 3; i++){
         gTextureCoords.push_back(std::vector<float>{0.0f, 1.0f*SPRITE_SIZE*i,
@@ -252,49 +262,54 @@ void processInput(){
 }
 
 void update(){
-    // delta time
-    float ticks = static_cast<float>(GetTime());
-    float deltaTime = ticks - gPreviousTicks;
-    gPreviousTicks = ticks;
+    if (gScreen == 1){
+        // delta time
+        float ticks = static_cast<float>(GetTime());
+        float deltaTime = ticks - gPreviousTicks;
+        gPreviousTicks = ticks;
 
-    // update paddles
-    float paddle1NewY = gPaddle1Position.y + PADDLE_SPEED * gPaddle1Movement.y * deltaTime;
-    float paddle2NewY = gPaddle2Position.y + PADDLE_SPEED * gPaddle2Movement.y * deltaTime;
-    if (paddle1NewY - PADDLE_LENGTH/2 > BORDER_THICKNESS &&
-        paddle1NewY + PADDLE_LENGTH/2 < SCREEN_HEIGHT-BORDER_THICKNESS){
-        gPaddle1Position.y = paddle1NewY;
-    }
-    if (paddle2NewY - PADDLE_LENGTH/2 > BORDER_THICKNESS &&
-        paddle2NewY + PADDLE_LENGTH/2 < SCREEN_HEIGHT-BORDER_THICKNESS){
-        gPaddle2Position.y = paddle2NewY;
-    }
-
-    // update balls
-    for (int i = 0; i < gNumBalls; i++){ 
-        gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime;
-        gBallPositions[i] -> y += gBallMovements[i] -> y * SPEED * deltaTime;
-
-        if (isColliding(gBallPositions[i], &gBallSize, &gPaddle1Position, &gPaddleSize) ||
-            isColliding(gBallPositions[i], &gBallSize, &gPaddle2Position, &gPaddleSize)){
-            gBallMovements[i] -> x *= -1;
-            gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime*1.05; // prevent trapping
+        // update paddles
+        float paddle1NewY = gPaddle1Position.y + PADDLE_SPEED * gPaddle1Movement.y * deltaTime;
+        float paddle2NewY = gPaddle2Position.y + PADDLE_SPEED * gPaddle2Movement.y * deltaTime;
+        if (paddle1NewY - PADDLE_LENGTH/2 > BORDER_THICKNESS &&
+            paddle1NewY + PADDLE_LENGTH/2 < SCREEN_HEIGHT-BORDER_THICKNESS){
+            gPaddle1Position.y = paddle1NewY;
         }
-        if (gBallPositions[i] -> y - SIZE/2 <= BORDER_THICKNESS || 
-            gBallPositions[i] -> y + SIZE/2 >= SCREEN_HEIGHT-BORDER_THICKNESS){
-                gBallMovements[i] -> y *= -1;
-                gBallPositions[i] -> y += gBallMovements[i] -> y * SPEED * deltaTime *1.05;
-         }
+        if (paddle2NewY - PADDLE_LENGTH/2 > BORDER_THICKNESS &&
+            paddle2NewY + PADDLE_LENGTH/2 < SCREEN_HEIGHT-BORDER_THICKNESS){
+            gPaddle2Position.y = paddle2NewY;
+        }
 
-         if (gBallPositions[i] -> x < -1*SIZE){ 
-            gPlayer2Score++;
-            resetBall(i);
-         }
-         if (gBallPositions[i] -> x > SCREEN_WIDTH + SIZE){
-            gPlayer1Score++;
-            resetBall(i);
-         }
+        // update balls
+        for (int i = 0; i < gNumBalls; i++){ 
+            gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime;
+            gBallPositions[i] -> y += gBallMovements[i] -> y * SPEED * deltaTime;
+
+            if (isColliding(gBallPositions[i], &gBallSize, &gPaddle1Position, &gPaddleSize) ||
+                isColliding(gBallPositions[i], &gBallSize, &gPaddle2Position, &gPaddleSize)){
+                gBallMovements[i] -> x *= -1;
+                gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime*1.05; // prevent trapping
+            }
+            if (gBallPositions[i] -> y - SIZE/2 <= BORDER_THICKNESS || 
+                gBallPositions[i] -> y + SIZE/2 >= SCREEN_HEIGHT-BORDER_THICKNESS){
+                    gBallMovements[i] -> y *= -1;
+                    gBallPositions[i] -> y += gBallMovements[i] -> y * SPEED * deltaTime *1.05;
+            }
+
+            if (gBallPositions[i] -> x < -1*SIZE){ 
+                gPlayer2Score++;
+                resetBall(i);
+            }
+            if (gBallPositions[i] -> x > SCREEN_WIDTH + SIZE){
+                gPlayer1Score++;
+                resetBall(i);
+            }
+        }
+
+        if (gPlayer1Score >= 5 || gPlayer2Score >= 5) {
+            gScreen = 2;
+        }
     }
-    
 
     gMousePosition = GetMousePosition();
 }
@@ -302,17 +317,31 @@ void update(){
 void render(){
     BeginDrawing();
     ClearBackground(ColorFromHex(BG_COLOUR));
-    // render background
-    renderObject(&gBkgdTexture, gBkgdCoords, &gBkgdPosition, &gBkgdSize);
+    if (gScreen == 1){ // game runs
+        // render background
+        renderObject(&gBkgdTexture, gBkgdCoords, &gBkgdPosition, &gBkgdSize);
 
-    for (int i = 0; i < gNumBalls; i++){ // render balls
-        renderObject(&gSpritesTexture, gTextureCoords[i], gBallPositions[i], &gBallSize);
+        for (int i = 0; i < gNumBalls; i++){ // render balls
+            renderObject(&gSpritesTexture, gTextureCoords[i], gBallPositions[i], &gBallSize);
+        }
+
+        // render paddles
+        renderObject(&gPaddleTexture, gPaddleCoords, &gPaddle1Position, &gPaddleSize);
+        renderObject(&gPaddleTexture, gPaddleCoords, &gPaddle2Position, &gPaddleSize);
     }
+    if (gScreen == 2){ // win/lose screen
+        // render background
+        renderObject(&gWinBkgdTexture, gBkgdCoords, &gBkgdPosition, &gBkgdSize);
 
-    // render paddles
-    renderObject(&gPaddleTexture, gPaddleCoords, &gPaddle1Position, &gPaddleSize);
-    renderObject(&gPaddleTexture, gPaddleCoords, &gPaddle2Position, &gPaddleSize);
-
+        // render winner
+        if (gPlayer1Score > gPlayer2Score){
+            renderObject(&gOneTexture, gBkgdCoords, &gBkgdPosition, &gBkgdSize);
+        }
+        else {
+            renderObject(&gTwoTexture, gBkgdCoords, &gBkgdPosition, &gBkgdSize);
+        }
+    }
+    
 
     EndDrawing();
 }
