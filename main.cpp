@@ -29,7 +29,10 @@ constexpr int SCREEN_WIDTH  = 1600 / 2,
               PADDLE_WIDTH = 50 / 2,
               PADDLE_DISTANCE = SCREEN_WIDTH / 2 - 30,
               PADDLE_SPEED = 175,
-              BORDER_THICKNESS = 20;
+              BORDER_THICKNESS = 20,
+              SCORE_NUMS_SIZE = 40, 
+              SCORE_SIDE_DISTANCE = SCREEN_WIDTH / 2 - 40,
+              SCORE_TOP_DISTANCE = 40;
 
 constexpr char    BG_COLOUR[]    = "#F8F1C8";
 constexpr Vector2 ORIGIN    = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2},
@@ -41,6 +44,7 @@ constexpr char BKGD_FP[] = "assets/bkgd.png";
 constexpr char WIN_BKGD_FP[] = "assets/winBkgd.png";
 constexpr char ONE_FP[] = "assets/1.png";
 constexpr char TWO_FP[] = "assets/2.png";
+constexpr char SCORE_NUMS_FP[] = "assets/scoreNumbers.png";
 
 // Global Variables
 AppStatus   gAppStatus      = RUNNING;
@@ -61,12 +65,17 @@ Vector2     gBall1Position = ORIGIN,
             gPaddleSize = {PADDLE_WIDTH, PADDLE_LENGTH},
             gBkgdPosition = ORIGIN,
             gBkgdSize = {SCREEN_WIDTH, SCREEN_HEIGHT},
+            gScore1Position = {ORIGIN.x - SCORE_SIDE_DISTANCE, SCORE_TOP_DISTANCE},
+            gScore2Position = {ORIGIN.x + SCORE_SIDE_DISTANCE, SCORE_TOP_DISTANCE},
+            gScoreNumsSize = {SCORE_NUMS_SIZE, SCORE_NUMS_SIZE},
             gMousePosition = GetMousePosition();
 
 
 std::vector<std::vector<float>> gTextureCoords;
 std::vector<float> gPaddleCoords = {0.0f, 0.0f, 50, 300};
 std::vector<float> gBkgdCoords = {0.0f, 0.0f, 1600, 900};
+std::vector<float> gScore1Coords = {0.0f, 0.0f, 100, 100};
+std::vector<float> gScore2Coords = {0.0f, 0.0f, 100, 100};
 std::vector<Vector2*> gBallPositions = {
     &gBall1Position,
     &gBall2Position,
@@ -84,6 +93,7 @@ Texture2D gBkgdTexture;
 Texture2D gWinBkgdTexture;
 Texture2D gOneTexture;
 Texture2D gTwoTexture;
+Texture2D gScoreNumsTexture;
 
 int gNumBalls = 1;
 int gPlayer1Score = 0;
@@ -190,6 +200,7 @@ void initialise() {
     gWinBkgdTexture = LoadTexture(WIN_BKGD_FP);
     gOneTexture = LoadTexture(ONE_FP);
     gTwoTexture = LoadTexture(TWO_FP);
+    gScoreNumsTexture = LoadTexture(SCORE_NUMS_FP);
 
     for (int i = 0; i < 3; i++){
         gTextureCoords.push_back(std::vector<float>{0.0f, 1.0f*SPRITE_SIZE*i,
@@ -306,6 +317,11 @@ void update(){
             }
         }
 
+        // update scoreboard
+        gScore1Coords[0] = std::min(500, gPlayer1Score*100);
+        gScore2Coords[0] = std::min(500, gPlayer2Score*100);
+
+
         if (gPlayer1Score >= 5 || gPlayer2Score >= 5) {
             gScreen = 2;
         }
@@ -328,6 +344,10 @@ void render(){
         // render paddles
         renderObject(&gPaddleTexture, gPaddleCoords, &gPaddle1Position, &gPaddleSize);
         renderObject(&gPaddleTexture, gPaddleCoords, &gPaddle2Position, &gPaddleSize);
+
+        // render score board
+        renderObject(&gScoreNumsTexture, gScore1Coords, &gScore1Position, &gScoreNumsSize);
+        renderObject(&gScoreNumsTexture, gScore2Coords, &gScore2Position, &gScoreNumsSize);
     }
     if (gScreen == 2){ // win/lose screen
         // render background
@@ -351,6 +371,10 @@ void shutdown(){
     UnloadTexture(gSpritesTexture);
     UnloadTexture(gPaddleTexture);
     UnloadTexture(gBkgdTexture);
+    UnloadTexture(gWinBkgdTexture);
+    UnloadTexture(gOneTexture);
+    UnloadTexture(gTwoTexture);
+    UnloadTexture(gScoreNumsTexture);
 
     CloseWindow();
 }
