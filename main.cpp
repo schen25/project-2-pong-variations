@@ -46,6 +46,8 @@ constexpr char WIN_BKGD_FP[] = "assets/winBkgd.png";
 constexpr char ONE_FP[] = "assets/1.png";
 constexpr char TWO_FP[] = "assets/2.png";
 constexpr char SCORE_NUMS_FP[] = "assets/scoreNumbers.png";
+constexpr char START_SCREEN_FP[] = "assets/startScreen.png";
+constexpr char PLAY_FP[] = "assets/playButtons.png";
 
 // Global Variables
 AppStatus   gAppStatus      = RUNNING;
@@ -69,6 +71,8 @@ Vector2     gBall1Position = ORIGIN,
             gScore1Position = {ORIGIN.x - SCORE_SIDE_DISTANCE, SCORE_TOP_DISTANCE},
             gScore2Position = {ORIGIN.x + SCORE_SIDE_DISTANCE, SCORE_TOP_DISTANCE},
             gScoreNumsSize = {SCORE_NUMS_SIZE, SCORE_NUMS_SIZE},
+            gPlayPosition = {ORIGIN.x, ORIGIN.y + 30},
+            gPlaySize = {200.0f, 75.0f},
             gMousePosition = GetMousePosition();
 
 
@@ -77,6 +81,7 @@ std::vector<float> gPaddleCoords = {0.0f, 0.0f, 50, 300};
 std::vector<float> gBkgdCoords = {0.0f, 0.0f, 1600, 900};
 std::vector<float> gScore1Coords = {0.0f, 0.0f, 100, 100};
 std::vector<float> gScore2Coords = {0.0f, 0.0f, 100, 100};
+std::vector<float> gPlayCoords = {0.0f, 0.0f, 400, 150};
 std::vector<Vector2*> gBallPositions = {
     &gBall1Position,
     &gBall2Position,
@@ -95,11 +100,13 @@ Texture2D gWinBkgdTexture;
 Texture2D gOneTexture;
 Texture2D gTwoTexture;
 Texture2D gScoreNumsTexture;
+Texture2D gStartScreenTexture;
+Texture2D gPlayTexture;
 
 int gNumBalls = 1;
 int gPlayer1Score = 0;
 int gPlayer2Score = 0;
-int gScreen = 1;
+int gScreen = 0;
 bool gIsTwoPlayer = true;
 unsigned int gStartTime;
 
@@ -208,6 +215,8 @@ void initialise() {
     gOneTexture = LoadTexture(ONE_FP);
     gTwoTexture = LoadTexture(TWO_FP);
     gScoreNumsTexture = LoadTexture(SCORE_NUMS_FP);
+    gStartScreenTexture = LoadTexture(START_SCREEN_FP);
+    gPlayTexture = LoadTexture(PLAY_FP);
 
     for (int i = 0; i < 3; i++){
         gTextureCoords.push_back(std::vector<float>{0.0f, 1.0f*SPRITE_SIZE*i,
@@ -229,58 +238,74 @@ void initialise() {
 
 
 void processInput(){
-    gPaddle1Movement = {0.0f, 0.0f};
-    gPaddle2Movement = {0.0f, 0.0f};
+    if (gScreen == 1){
+        gPaddle1Movement = {0.0f, 0.0f};
+        gPaddle2Movement = {0.0f, 0.0f};
 
-    if (IsKeyPressed(KEY_T)) gIsTwoPlayer = !gIsTwoPlayer;
+        if (IsKeyPressed(KEY_T)) gIsTwoPlayer = !gIsTwoPlayer;
 
-    if (IsKeyDown(KEY_W)) gPaddle1Movement.y--;
-    else if (IsKeyDown(KEY_S)) gPaddle1Movement.y++;
+        if (IsKeyDown(KEY_W)) gPaddle1Movement.y--;
+        else if (IsKeyDown(KEY_S)) gPaddle1Movement.y++;
 
-    if (gIsTwoPlayer){
-        if (IsKeyDown(KEY_UP)) gPaddle2Movement.y--;
-        else if (IsKeyDown(KEY_DOWN)) gPaddle2Movement.y++;
-    }
-    else {
-        // automated motion
-        float minXDistance = SCREEN_WIDTH;
-        Vector2* closestBall = nullptr;
-        for (int i = 0; i < gNumBalls; i++){
-            if (gBallPositions[i] -> x < gPaddle2Position.x &&
-                gBallMovements[i] -> x > 0){
-                // ball is a candidate to follow if it is moving toward you
-                if (gPaddle2Position.x - gBallPositions[i] -> x < minXDistance){
-                    minXDistance = gPaddle2Position.x - gBallPositions[i] -> x;
-                    closestBall = gBallPositions[i];
+        if (gIsTwoPlayer){
+            if (IsKeyDown(KEY_UP)) gPaddle2Movement.y--;
+            else if (IsKeyDown(KEY_DOWN)) gPaddle2Movement.y++;
+        }
+        else {
+            // automated motion
+            float minXDistance = SCREEN_WIDTH;
+            Vector2* closestBall = nullptr;
+            for (int i = 0; i < gNumBalls; i++){
+                if (gBallPositions[i] -> x < gPaddle2Position.x &&
+                    gBallMovements[i] -> x > 0){
+                    // ball is a candidate to follow if it is moving toward you
+                    if (gPaddle2Position.x - gBallPositions[i] -> x < minXDistance){
+                        minXDistance = gPaddle2Position.x - gBallPositions[i] -> x;
+                        closestBall = gBallPositions[i];
+                    }
                 }
             }
+            if (closestBall){
+                if (gPaddle2Position.y > closestBall -> y + MOVE_BUFFER) gPaddle2Movement.y--;
+                else if (gPaddle2Position.y < closestBall -> y - MOVE_BUFFER) gPaddle2Movement.y++;
+            }
         }
-        if (closestBall){
-            if (gPaddle2Position.y > closestBall -> y + MOVE_BUFFER) gPaddle2Movement.y--;
-            else if (gPaddle2Position.y < closestBall -> y - MOVE_BUFFER) gPaddle2Movement.y++;
-        }
-    }
-    
-    if (IsKeyPressed(KEY_ONE)){
-        gNumBalls = 1;
-        // reset balls 2, 3 (1 and 2 are the indices)
-        resetBall(1);
-        resetBall(2);
+        
+        if (IsKeyPressed(KEY_ONE)){
+            gNumBalls = 1;
+            // reset balls 2, 3 (1 and 2 are the indices)
+            resetBall(1);
+            resetBall(2);
 
+        }
+        else if (IsKeyPressed(KEY_TWO)){
+            gNumBalls = 2;
+            resetBall(2);
+        }
+        else if (IsKeyPressed(KEY_THREE)){
+            gNumBalls = 3;
+        }
     }
-    else if (IsKeyPressed(KEY_TWO)){
-        gNumBalls = 2;
-        resetBall(2);
-    }
-    else if (IsKeyPressed(KEY_THREE)){
-        gNumBalls = 3;
-    }
-    
 
     if (WindowShouldClose()) gAppStatus = TERMINATED;
 }
 
 void update(){
+    if (gScreen == 0){
+        gMousePosition = GetMousePosition();
+        if (gMousePosition.x >= gPlayPosition.x - gPlaySize.x / 2.0f &&
+            gMousePosition.x <= gPlayPosition.x + gPlaySize.x / 2.0f &&
+            gMousePosition.y >= gPlayPosition.y - gPlaySize.y / 2.0f &&
+            gMousePosition.y <= gPlayPosition.y + gPlaySize.y / 2.0f){
+                gPlayCoords[1] = 150;
+                if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
+                    gScreen = 1;
+                }
+        }
+        else{
+            gPlayCoords[1] = 0;
+        }
+    }
     if (gScreen == 1){
         // delta time
         float ticks = static_cast<float>(GetTime());
@@ -347,13 +372,16 @@ void update(){
         }
     }
 
-    gMousePosition = GetMousePosition();
 }
 
 void render(){
     BeginDrawing();
     ClearBackground(ColorFromHex(BG_COLOUR));
-    if (gScreen == 1){ // game runs
+    if (gScreen == 0){
+        renderObject(&gStartScreenTexture, gBkgdCoords, &gBkgdPosition, &gBkgdSize);
+        renderObject(&gPlayTexture, gPlayCoords, &gPlayPosition, &gPlaySize);
+    }
+    else if (gScreen == 1){ // game runs
         // render background
         renderObject(&gBkgdTexture, gBkgdCoords, &gBkgdPosition, &gBkgdSize);
 
@@ -395,6 +423,8 @@ void shutdown(){
     UnloadTexture(gOneTexture);
     UnloadTexture(gTwoTexture);
     UnloadTexture(gScoreNumsTexture);
+    UnloadTexture(gStartScreenTexture);
+    UnloadTexture(gPlayTexture);
 
     CloseWindow();
 }
