@@ -32,7 +32,8 @@ constexpr int SCREEN_WIDTH  = 1600 / 2,
               BORDER_THICKNESS = 20,
               SCORE_NUMS_SIZE = 40, 
               SCORE_SIDE_DISTANCE = SCREEN_WIDTH / 2 - 40,
-              SCORE_TOP_DISTANCE = 40;
+              SCORE_TOP_DISTANCE = 40,
+              MOVE_BUFFER = 5;
 
 constexpr char    BG_COLOUR[]    = "#F8F1C8";
 constexpr Vector2 ORIGIN    = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2},
@@ -140,6 +141,12 @@ void resetBall(int i){
     gBallMovements[i] -> x = std::rand();
     gBallMovements[i] -> y = std::rand();
 
+    while (gBallMovements[i] -> x < gBallMovements[i] -> y) {
+        // so it doesn't travel too vertically
+        gBallMovements[i] -> x = std::rand();
+        gBallMovements[i] -> y = std::rand();
+    }
+
     if (std::rand() % 2) gBallMovements[i] -> x *= -1;
     if (std::rand() %2) gBallMovements[i] -> y *= -1;
 
@@ -206,13 +213,15 @@ void initialise() {
         gTextureCoords.push_back(std::vector<float>{0.0f, 1.0f*SPRITE_SIZE*i,
                                  1.0f*SPRITE_SIZE,
                                  1.0f*SPRITE_SIZE});
-        gBallMovements[i] -> x = std::rand();
-        gBallMovements[i] -> y = std::rand();
 
-        if (std::rand() % 2) gBallMovements[i] -> x *= -1;
-        if (std::rand() % 2) gBallMovements[i] -> y *= -1;
+        resetBall(i);
+        // gBallMovements[i] -> x = std::rand();
+        // gBallMovements[i] -> y = std::rand();
 
-        Normalise(gBallMovements[i]);
+        // if (std::rand() % 2) gBallMovements[i] -> x *= -1;
+        // if (std::rand() % 2) gBallMovements[i] -> y *= -1;
+
+        // Normalise(gBallMovements[i]);
     }
 
     SetTargetFPS(FPS);
@@ -247,10 +256,9 @@ void processInput(){
             }
         }
         if (closestBall){
-            if (gPaddle2Position.y > closestBall -> y) gPaddle2Movement.y--;
-            if (gPaddle2Position.y < closestBall -> y) gPaddle2Movement.y++;
+            if (gPaddle2Position.y > closestBall -> y + MOVE_BUFFER) gPaddle2Movement.y--;
+            else if (gPaddle2Position.y < closestBall -> y - MOVE_BUFFER) gPaddle2Movement.y++;
         }
-
     }
     
     if (IsKeyPressed(KEY_ONE)){
@@ -297,17 +305,19 @@ void update(){
             gBallPositions[i] -> y += gBallMovements[i] -> y * SPEED * deltaTime;
 
             if (isColliding(gBallPositions[i], &gBallSize, &gPaddle1Position, &gPaddleSize) &&
-                (gBallPositions[i] -> x > gPaddle1Position.x)){
+                (gBallPositions[i] -> x >= gPaddle1Position.x + SIZE/4)){
                 gBallMovements[i] -> x *= -1;
+
                 while (isColliding(gBallPositions[i], &gBallSize, &gPaddle1Position, &gPaddleSize)){
-                        gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime*1.5; // prevent trapping
+                        gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime*1.0; // prevent trapping
                 }
             }
             else if (isColliding(gBallPositions[i], &gBallSize, &gPaddle2Position, &gPaddleSize) &&
-                (gBallPositions[i] -> x < gPaddle2Position.x)){
+                (gBallPositions[i] -> x <= gPaddle2Position.x - SIZE/4)){
                     gBallMovements[i] -> x *= -1;
+
                     while (isColliding(gBallPositions[i], &gBallSize, &gPaddle2Position, &gPaddleSize)){
-                            gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime*1.5; // prevent trapping
+                            gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime*1.0; // prevent trapping
                     }
 
             }
