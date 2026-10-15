@@ -296,15 +296,25 @@ void update(){
             gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime;
             gBallPositions[i] -> y += gBallMovements[i] -> y * SPEED * deltaTime;
 
-            if (isColliding(gBallPositions[i], &gBallSize, &gPaddle1Position, &gPaddleSize) ||
-                isColliding(gBallPositions[i], &gBallSize, &gPaddle2Position, &gPaddleSize)){
+            if (isColliding(gBallPositions[i], &gBallSize, &gPaddle1Position, &gPaddleSize) &&
+                (gBallPositions[i] -> x > gPaddle1Position.x)){
                 gBallMovements[i] -> x *= -1;
-                gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime*1.05; // prevent trapping
+                while (isColliding(gBallPositions[i], &gBallSize, &gPaddle1Position, &gPaddleSize)){
+                        gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime*1.5; // prevent trapping
+                }
+            }
+            else if (isColliding(gBallPositions[i], &gBallSize, &gPaddle2Position, &gPaddleSize) &&
+                (gBallPositions[i] -> x < gPaddle2Position.x)){
+                    gBallMovements[i] -> x *= -1;
+                    while (isColliding(gBallPositions[i], &gBallSize, &gPaddle2Position, &gPaddleSize)){
+                            gBallPositions[i] -> x += gBallMovements[i] -> x * SPEED * deltaTime*1.5; // prevent trapping
+                    }
+
             }
             if (gBallPositions[i] -> y - SIZE/2 <= BORDER_THICKNESS || 
                 gBallPositions[i] -> y + SIZE/2 >= SCREEN_HEIGHT-BORDER_THICKNESS){
                     gBallMovements[i] -> y *= -1;
-                    gBallPositions[i] -> y += gBallMovements[i] -> y * SPEED * deltaTime *1.05;
+                    gBallPositions[i] -> y += gBallMovements[i] -> y * SPEED * deltaTime *5;
             }
 
             if (gBallPositions[i] -> x < -1*SIZE){ 
