@@ -300,13 +300,14 @@ void update(){
                 gPlayCoords[1] = 150;
                 if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
                     gScreen = 1;
+                    gPreviousTicks = static_cast<float>(GetTime());
                 }
         }
         else{
             gPlayCoords[1] = 0;
         }
     }
-    if (gScreen == 1){
+    else if (gScreen == 1){
         // delta time
         float ticks = static_cast<float>(GetTime());
         float deltaTime = ticks - gPreviousTicks;
